@@ -1,6 +1,6 @@
 /**
  * Gas (air) solver — 2D compressible Navier–Stokes, convection + viscosity.
- * Heat diffusion is in heat.cpp (used by particles; optional for air).
+ * Heat diffusion is in heat.cpp (optional).
  *
  * - Convection: first-order Rusanov (no overshoots).
  * - Viscosity: μ (dynamic), stress τ = μ(∇v + ∇vᵀ) − (2/3)μ(∇·v)I.

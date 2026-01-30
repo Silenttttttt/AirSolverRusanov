@@ -1,6 +1,6 @@
 /**
  * Heat physics — thermal diffusion, heat capacity, temperature.
- * For use by particles (and optionally by air). Separate from gas/air solver.
+ * Thermal diffusion and heat capacity. Separate module from the gas solver.
  */
 
 #ifndef HEAT_HPP

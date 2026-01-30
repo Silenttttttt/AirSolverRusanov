@@ -1,8 +1,8 @@
-# AirSolverRusanov — gas (air) + heat, split for TPT
+# AirSolverRusanov — gas + heat
 
 **Two files:**
-- **Gas (air)** — `air_solver_rusanov.cpp`: convection (Rusanov) + viscosity. Used by TPT’s air.
-- **Heat** — `heat.hpp` / `heat.cpp`: thermal diffusion k∇²T, heat capacity c_v/c_p, temperature. Used by particles (later) and optionally by air.
+- **Gas** — `air_solver_rusanov.cpp`: convection (Rusanov) + viscosity.
+- **Heat** — `heat.hpp` / `heat.cpp`: thermal diffusion k∇²T, heat capacity c_v/c_p, temperature.
 
 **Stable by design:** first-order Rusanov + viscosity; heat diffusion in separate module. Conservative: mass and energy conserved (periodic BCs).
 
@@ -33,23 +33,12 @@ g++ -O2 -std=c++17 -DUSE_SDL -o air_rusanov air_solver_rusanov.cpp heat.cpp $(pk
 ```
 Requires SDL2 dev package (e.g. `sudo pacman -S sdl2` on Manjaro). **Left-click** = add pressure bump; **right-click or drag** = add wall cells; **middle-click or drag** = remove wall cells; **Space** = pause; window title and terminal show mass/energy err.
 
-## Use in your project (e.g. Powder Toy)
+## Use in your project
 
 - **No external deps** — only C++17 and STL.
-- **Gas (air):** `air_solver_rusanov.cpp` — `State(ny, nx, dx)`; `step()` (convection + viscosity); `apply_heat_diffusion(dt)` (calls heat module). Constants: `R_gas`, `c_v`, `c_p`, `mu`.
-- **Heat (particles later):** `heat.hpp` / `heat.cpp` — `heat::heat_diffusion_step(ny, nx, dx, dt, rho, rhou, rhov, E)`; `heat::temperature_from_e(e)`; `heat::max_heat_dt(...)`; constants: `heat::R_gas`, `heat::c_v`, `heat::c_p`, `heat::k_thermal`, `heat::Pr`.
-- **API (gas):** `set_uniform(rho, ux, uy, p)`; `add_bump(cy, cx, dP, rad)`; `double dt = step()` (returns dt used, or 0 if rejected); `total_mass()`, `total_energy()`; `primitives(iy, ix, rho, ux, uy, e, p)`; `temperature(iy, ix)` (Kelvin); read/write `U0[l][iy][ix]` for conserved [ρ, ρu, ρv, E]. **Walls:** `set_wall(iy, ix, true)` for solid; `is_wall(iy, ix)`; `set_boundary_walls()` sets the domain edge cells as walls (reflective box, no periodic wrap). Default all false (periodic). Reflective slip + adiabatic heat at walls. The SDL demo calls `set_boundary_walls()` so the run is a box, not wormholes.
-
-**Porting to The Powder Toy (TPT)** — Moderate effort (roughly half a day to a day if you know both codebases):
-
-| Task | Effort | What |
-|------|--------|------|
-| **Data mapping** | Easy | PT has `pv`, `hv`, `rho`, `vx`, `vy`. Convert to conserved U: ρ from `rho`, u/v from `vx`/`vy`, E from ρ, p (from `pv`), and e = p/((γ−1)ρ). Copy back: from U get ρ, u, v, p; set `pv`=p, `vx`=u, `vy`=v, `hv`=p/(ρ·R) if PT needs temperature. Use double in solver, copy to/from PT’s `float` grids. |
-| **Grid** | Easy | One `State(ny, nx, dx)` with ny=YCELLS, nx=XCELLS; same shape as PT’s air grid. |
-| **Walls** | Medium | Solver is currently periodic. Add a wall mask (e.g. from `bmap_blockair`): at cell faces next to a wall, use zero normal flux (no mass/energy through wall; momentum flux = pressure from fluid side). Either pass a `is_wall(iy,ix)` into `step()` and branch in the flux loop, or precompute ghost cells. |
-| **Call site** | Easy | In `Air::update_air()`: create or reuse a gas `State`, copy in `pv`/`vx`/`vy`/`rho` → U; call `step()` then `apply_heat_diffusion(dt)` (or skip heat for air-only); copy U → primitives → `pv`/`vx`/`vy`/`rho`; set `hv` from `temperature(iy,ix)` (Kelvin). Link `heat.cpp` if you use heat. |
-
-So: **not hard** — one file, no deps, same grid and physics. The only non-trivial part is implementing wall BCs in the flux logic (stop using periodic wrap at walls; use zero flux or mirror state).
+- **Gas:** `air_solver_rusanov.cpp` — `State(ny, nx, dx)`; `step()` (convection + viscosity); `apply_heat_diffusion(dt)` (calls heat module). Constants: `R_gas`, `c_v`, `c_p`, `mu`.
+- **Heat:** `heat.hpp` / `heat.cpp` — `heat::heat_diffusion_step(ny, nx, dx, dt, rho, rhou, rhov, E)`; `heat::temperature_from_e(e)`; `heat::max_heat_dt(...)`; constants: `heat::R_gas`, `heat::c_v`, `heat::c_p`, `heat::k_thermal`, `heat::Pr`.
+- **API (gas):** `set_uniform(rho, ux, uy, p)`; `add_bump(cy, cx, dP, rad)`; `double dt = step()` (returns dt used, or 0 if rejected); `total_mass()`, `total_energy()`; `primitives(iy, ix, rho, ux, uy, e, p)`; `temperature(iy, ix)` (Kelvin); read/write `U0[l][iy][ix]` for conserved [ρ, ρu, ρv, E]. **Walls:** `set_wall(iy, ix, true)` for solid; `is_wall(iy, ix)`; `set_boundary_walls()` sets the domain edge cells as walls (reflective box, no periodic wrap). Default all false (periodic). Reflective slip + adiabatic heat at walls. The SDL demo calls `set_boundary_walls()` so the run is a box.
 
 ## Will it work? Trade-offs
 
@@ -86,5 +75,5 @@ So: it will run stably and conserve; you trade **sharpness/accuracy** for **stab
 - **CFL** — Bump to 0.4 if you see no step rejects; you advance more per step and stay fast.
 - **Second-order (MUSCL + minmod)** — Add limited linear reconstruction (minmod slope) and evaluate flux from face-left/face-right states. Sharper shocks, still stable; ~20–30% more cost per step. Keep Rusanov flux and step rejection.
 - **Better colormap** — e.g. show density or speed instead of pressure, or overlay velocity arrows every N cells for flow direction.
-- **Walls / boundaries** — For PT: zero normal flux at solid faces (copy cell state into ghost, flip normal velocity), so you can do rooms and obstacles without changing the core solver.
+- **Walls / boundaries** — Reflective slip and adiabatic heat are built in; use `set_wall` or `set_boundary_walls()` for rooms and obstacles.
 - **Multiple fluids** — Same solver; add a passive scalar (e.g. smoke concentration) advected with the flow if you need tracers.
