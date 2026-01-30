@@ -10,7 +10,7 @@
 
 ## Why this exists
 
-FluidSim (MacCormack) is hard to keep stable and performant. This solver trades **accuracy** for **stability and simplicity**:
+MacCormack and others are hard to keep stable and performant. This solver trades **accuracy** for **stability and simplicity**:
 
 - **First-order** → no reconstruction, so no negative density/energy from overshoots.
 - **Rusanov flux** → very dissipative but stable; CFL ≤ 0.5 in 1D, we use 0.35 in 2D.
